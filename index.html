@@ -3,11 +3,12 @@
 <head>
     <title>My IEP Assistant v2!</title>
     <style>
-        body { font-family: sans-serif; padding: 40px; text-align: center; background-color: #f4f7f6; }
+        body { font-family: sans-serif; padding: 40px; text-align: center; background-color: #f4f7f6; color: #333; }
         .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 100%; max-width: 500px; }
         button { padding: 12px 24px; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 5px; font-weight: bold; }
         .case-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 5px solid #28a745; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .shortcut-btn { padding: 8px 12px; font-size: 12px; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; margin-bottom: 5px; }
+        #ai-section { display: none; margin-top: 20px; text-align: left; background: #fff; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 2px solid #4285F4; overflow: hidden; }
     </style>
 </head>
 <body>
@@ -39,10 +40,15 @@
         <div id="privacy-preview" style="margin-top: 10px; font-size: 0.8em; color: #666;"></div>
     </div>
 
-    <div id="ai-section" style="display: none; margin-top: 20px; text-align: left; background: #fff; padding: 10px; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 2px solid #4285F4; min-height: 400px;">
-        <h3 style="margin: 10px 0 10px 10px; color: #4285F4;">🤖 IEP AI Assistant</h3>
+    <div id="ai-section">
+        <h3 style="margin: 15px; color: #4285F4;">🤖 IEP AI Assistant</h3>
         <script async type='module' src='https://interfaces.zapier.com/assets/web-components/zapier-interfaces/zapier-interfaces.esm.js'></script>
-        <zapier-interfaces-chatbot-embed is-popup='false' chatbot-id='cmml2th8k002vvsz4kuq0g46j' height='400px' width='100%'></zapier-interfaces-chatbot-embed>
+        <zapier-interfaces-chatbot-embed 
+            is-popup='false' 
+            chatbot-id='cmml2th8k002vvsz4kuq0g46j' 
+            height='500px' 
+            width='100%'>
+        </zapier-interfaces-chatbot-embed>
     </div>
 
     <div id="dashboard" style="display: none; margin-top: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">
@@ -76,13 +82,18 @@
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('login-section').style.display = 'none';
-                ["user-info", "student-entry", "ai-section", "dashboard"].forEach(id => document.getElementById(id).style.display = 'block');
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('student-entry').style.display = 'block';
+                document.getElementById('ai-section').style.display = 'block';
+                document.getElementById('dashboard').style.display = 'block';
                 document.getElementById('user-name').innerText = user.displayName;
                 loadDashboard();
             }
         });
 
-        window.addShortcut = (type) => { document.getElementById('notes').value += ` [${type} REQUESTED] `; };
+        window.addShortcut = (type) => { 
+            document.getElementById('notes').value += ` [${type} REQUESTED] `; 
+        };
 
         const loadDashboard = () => {
             const q = query(collection(db, "studentCases"), orderBy("timestamp", "desc"));
