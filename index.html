@@ -7,6 +7,7 @@
         .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 100%; max-width: 500px; }
         button { padding: 12px 24px; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 5px; font-weight: bold; }
         .case-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 5px solid #28a745; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .shortcut-btn { padding: 8px 12px; font-size: 12px; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; margin-bottom: 5px; }
     </style>
 </head>
 <body>
@@ -24,14 +25,23 @@
     <div id="student-entry" style="display: none; margin-top: 30px; text-align: left; background: #eee; padding: 20px; border-radius: 8px; max-width: 500px; margin-left: auto; margin-right: auto;">
         <h3>Add Student Observation</h3>
         <label>First Name:</label><br>
-        <input type="text" id="fname" placeholder="e.g. Liam" style="width: 95%;"><br><br>
+        <input type="text" id="fname" placeholder="e.g. Liam" style="width: 95%; padding: 8px;"><br><br>
         <label>Last Name:</label><br>
-        <input type="text" id="lname" placeholder="e.g. Green" style="width: 95%;"><br><br>
+        <input type="text" id="lname" placeholder="e.g. Green" style="width: 95%; padding: 8px;"><br><br>
         <label>Grade Level:</label><br>
-        <input type="number" id="grade" placeholder="10" style="width: 95%;"><br><br>
+        <input type="number" id="grade" placeholder="10" style="width: 95%; padding: 8px;"><br><br>
+        
         <label>Observation Notes:</label><br>
-        <textarea id="notes" placeholder="Keep dates for meetings, but DOBs will be scrubbed..." style="width: 95%; height: 80px;"></textarea><br><br>
-        <button onclick="saveStudent()" style="background-color: #28a745; width: 100%;">Scrub & Save to Vault</button>
+        <textarea id="notes" placeholder="Type your observation here..." style="width: 95%; height: 100px; padding: 8px;"></textarea>
+        
+        <div id="shortcuts" style="margin-top: 10px; display: flex; flex-wrap: wrap;">
+            <button onclick="addShortcut('GOAL')" class="shortcut-btn" style="background-color: #673ab7;">🎯 Need Goal</button>
+            <button onclick="addShortcut('ACCOM')" class="shortcut-btn" style="background-color: #ff9800;">🛠️ Need Accomm.</button>
+            <button onclick="addShortcut('PLAAFP')" class="shortcut-btn" style="background-color: #009688;">📝 Need Present Level</button>
+        </div>
+        <br>
+
+        <button onclick="saveStudent()" style="background-color: #28a745; width: 100%; margin-top: 10px;">Scrub & Save to Vault</button>
         <div id="privacy-preview" style="margin-top: 15px; font-size: 0.9em; color: #555;"></div>
     </div>
 
@@ -54,4 +64,89 @@
             projectId: "my-iep-assistant",
             storageBucket: "my-iep-assistant.firebasestorage.app",
             messagingSenderId: "926323415415",
-            appId: "1:926323415415:web:f8e248e5a5e9a6035
+            appId: "1:926323415415:web:f8e248e5a5e9a603532972",
+            measurementId: "G-XTT3GG60CZ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // 1. LOGIN LOGIC
+        document.getElementById('login-btn').onclick = () => {
+            signInWithPopup(auth, provider).catch((e) => alert(e.message));
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('student-entry').style.display = 'block';
+                document.getElementById('dashboard').style.display = 'block';
+                document.getElementById('user-name').innerText = user.displayName;
+                loadDashboard(); 
+            }
+        });
+
+        // 2. SHORTCUT LOGIC
+        window.addShortcut = (type) => {
+            let notesField = document.getElementById('notes');
+            let tag = ` [${type} REQUESTED] `;
+            notesField.value += tag;
+            notesField.focus();
+        };
+
+        // 3. LIVE FEED LOGIC (READ)
+        const loadDashboard = () => {
+            const q = query(collection(db, "studentCases"), orderBy("timestamp", "desc"));
+            onSnapshot(q, (snapshot) => {
+                let html = "";
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    html += `
+                        <div class="case-card">
+                            <span style="font-weight: bold; color: #28a745;">ID: ${data.studentId}</span>
+                            <small style="float: right; color: #888;">Teacher: ${data.teacher}</small>
+                            <p style="margin: 10px 0 0 0; line-height: 1.4;">${data.notes}</p>
+                        </div>`;
+                });
+                document.getElementById('cases-list').innerHTML = html || "<p>No data in vault yet.</p>";
+            });
+        };
+
+        // 4. SCRUBBER & SAVE LOGIC (WRITE)
+        window.saveStudent = () => {
+            let f = document.getElementById('fname').value;
+            let l = document.getElementById('lname').value;
+            let g = document.getElementById('grade').value;
+            let notes = document.getElementById('notes').value;
+
+            if(!f || !l || !g) { alert("Please complete the student info."); return; }
+
+            // Create Private ID (Pseudonymization)
+            let studentKey = f.substring(0,2) + l.substring(0,2) + g;
+            
+            // FERPA Scrubber patterns
+            let idPattern = /\b\d{7}\b/g; 
+            let dobPattern = /(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi;
+
+            let cleanNotes = notes.replace(idPattern, "[ID REDACTED]").replace(dobPattern, "[DOB REDACTED]");
+
+            addDoc(collection(db, "studentCases"), {
+                studentId: studentKey,
+                notes: cleanNotes,
+                teacher: auth.currentUser.displayName,
+                school: "KIPP Navigate",
+                timestamp: serverTimestamp()
+            }).then(() => {
+                // Reset form fields
+                document.getElementById('fname').value = "";
+                document.getElementById('lname').value = "";
+                document.getElementById('notes').value = "";
+                document.getElementById('privacy-preview').innerHTML = "<span style='color: green;'>✅ Saved Successfully!</span>";
+            }).catch((e) => alert("Error saving: " + e.message));
+        };
+    </script>
+</body>
+</html>
