@@ -43,12 +43,7 @@
     <div id="ai-section">
         <h3 style="margin: 15px; color: #4285F4;">🤖 IEP AI Assistant</h3>
         <script async type='module' src='https://interfaces.zapier.com/assets/web-components/zapier-interfaces/zapier-interfaces.esm.js'></script>
-        <zapier-interfaces-chatbot-embed 
-            is-popup='false' 
-            chatbot-id='cmml2th8k002vvsz4kuq0g46j' 
-            height='500px' 
-            width='100%'>
-        </zapier-interfaces-chatbot-embed>
+        <zapier-interfaces-chatbot-embed is-popup='false' chatbot-id='cmml2th8k002vvsz4kuq0g46j' height='500px' width='100%'></zapier-interfaces-chatbot-embed>
     </div>
 
     <div id="dashboard" style="display: none; margin-top: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">
@@ -81,19 +76,14 @@
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('user-info').style.display = 'block';
-                document.getElementById('student-entry').style.display = 'block';
-                document.getElementById('ai-section').style.display = 'block';
-                document.getElementById('dashboard').style.display = 'block';
+                ["login-section"].forEach(id => document.getElementById(id).style.display = 'none');
+                ["user-info", "student-entry", "ai-section", "dashboard"].forEach(id => document.getElementById(id).style.display = 'block');
                 document.getElementById('user-name').innerText = user.displayName;
                 loadDashboard();
             }
         });
 
-        window.addShortcut = (type) => { 
-            document.getElementById('notes').value += ` [${type} REQUESTED] `; 
-        };
+        window.addShortcut = (type) => { document.getElementById('notes').value += ` [${type} REQUESTED] `; };
 
         const loadDashboard = () => {
             const q = query(collection(db, "studentCases"), orderBy("timestamp", "desc"));
@@ -107,16 +97,28 @@
             });
         };
 
-        window.saveStudent = () => {
+        // UPDATED SAVE FUNCTION WITH AI MEMORY BRIDGE
+        window.saveStudent = async () => {
             let f = document.getElementById('fname').value, l = document.getElementById('lname').value, g = document.getElementById('grade').value, n = document.getElementById('notes').value;
             if(!f || !l || !g) return alert("Fill student info");
+            
             let key = f.substring(0,2) + l.substring(0,2) + g;
             let clean = n.replace(/\b\d{7}\b/g, "[ID REDACTED]").replace(/(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi, "[DOB REDACTED]");
-            addDoc(collection(db, "studentCases"), { studentId: key, notes: clean, teacher: auth.currentUser.displayName, school: "KIPP Navigate", timestamp: serverTimestamp() })
-            .then(() => { 
-                document.getElementById('fname').value = ""; document.getElementById('lname').value = ""; document.getElementById('notes').value = ""; 
-                document.getElementById('privacy-preview').innerText = "Saved!"; 
-            });
+            
+            // 1. Save to Firebase (Vault)
+            await addDoc(collection(db, "studentCases"), { studentId: key, notes: clean, teacher: auth.currentUser.displayName, school: "KIPP Navigate", timestamp: serverTimestamp() });
+
+            // 2. Send to Zapier Memory Bridge
+            try {
+                fetch("https://hooks.zapier.com/hooks/catch/26770786/ux887a5/", {
+                    method: "POST",
+                    body: JSON.stringify({ student: key, observation: clean, teacher: auth.currentUser.displayName, date: new Date().toLocaleString() })
+                });
+            } catch(e) { console.log("Memory bridge failed but data saved to vault."); }
+
+            // Clear inputs
+            document.getElementById('fname').value = ""; document.getElementById('lname').value = ""; document.getElementById('notes').value = ""; 
+            document.getElementById('privacy-preview').innerText = "Saved to Vault & AI Memory!"; 
         };
     </script>
 </body>
