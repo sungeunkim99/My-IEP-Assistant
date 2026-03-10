@@ -4,8 +4,9 @@
     <title>My IEP Assistant</title>
     <style>
         body { font-family: sans-serif; padding: 40px; text-align: center; background-color: #f4f7f6; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; width: 100%; max-width: 500px; }
         button { padding: 12px 24px; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 5px; font-weight: bold; }
+        .case-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 5px solid #28a745; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
@@ -20,24 +21,32 @@
         </div>
     </div> 
 
-    <div id="student-entry" style="display: none; margin-top: 30px; text-align: left; background: #eee; padding: 20px; border-radius: 8px; max-width: 400px; margin-left: auto; margin-right: auto;">
-        <h3>Add Student Case</h3>
+    <div id="student-entry" style="display: none; margin-top: 30px; text-align: left; background: #eee; padding: 20px; border-radius: 8px; max-width: 500px; margin-left: auto; margin-right: auto;">
+        <h3>Add Student Observation</h3>
         <label>First Name:</label><br>
         <input type="text" id="fname" placeholder="e.g. Liam" style="width: 95%;"><br><br>
         <label>Last Name:</label><br>
         <input type="text" id="lname" placeholder="e.g. Green" style="width: 95%;"><br><br>
         <label>Grade Level:</label><br>
         <input type="number" id="grade" placeholder="10" style="width: 95%;"><br><br>
-        <label>Observation Notes (No DOB or ID!):</label><br>
-        <textarea id="notes" style="width: 95%; height: 80px;"></textarea><br><br>
-        <button onclick="saveStudent()" style="background-color: #28a745; width: 100%;">Generate & Save Private Case</button>
-        <div id="privacy-preview" style="margin-top: 20px; color: #2c3e50; font-size: 0.9em;"></div>
+        <label>Observation Notes:</label><br>
+        <textarea id="notes" placeholder="Keep dates for meetings, but DOBs will be scrubbed..." style="width: 95%; height: 80px;"></textarea><br><br>
+        <button onclick="saveStudent()" style="background-color: #28a745; width: 100%;">Scrub & Save to Vault</button>
+        <div id="privacy-preview" style="margin-top: 15px; font-size: 0.9em; color: #555;"></div>
+    </div>
+
+    <div id="dashboard" style="display: none; margin-top: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">
+        <hr>
+        <h3 style="color: #333;">School Observation Feed</h3>
+        <div id="cases-list">
+            <p>Accessing secure vault...</p>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAx0lBpJLC3xAL1FBpflewUAF1k3OieBCM",
@@ -45,59 +54,4 @@
             projectId: "my-iep-assistant",
             storageBucket: "my-iep-assistant.firebasestorage.app",
             messagingSenderId: "926323415415",
-            appId: "1:926323415415:web:f8e248e5a5e9a603532972",
-            measurementId: "G-XTT3GG60CZ"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
-
-        // 1. Handle Login Button
-        document.getElementById('login-btn').onclick = () => {
-            signInWithPopup(auth, provider).catch((error) => { alert(error.message); });
-        };
-
-        // 2. Monitor Login State
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('user-info').style.display = 'block';
-                document.getElementById('student-entry').style.display = 'block';
-                document.getElementById('user-name').innerText = user.displayName;
-            }
-        });
-
-        // 3. The Privacy Scrubber & Database Save
-        window.saveStudent = () => {
-            let f = document.getElementById('fname').value;
-            let l = document.getElementById('lname').value;
-            let g = document.getElementById('grade').value;
-            let notes = document.getElementById('notes').value;
-
-            if(!f || !l || !g) { alert("Please fill out Name and Grade"); return; }
-
-            let studentKey = f.substring(0,2) + l.substring(0,2) + g;
-            let idPattern = /\b\d{7}\b/g; 
-            let dobPattern = /(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi;
-
-            let cleanNotes = notes.replace(idPattern, "[ID REDACTED]").replace(dobPattern, "[DOB REDACTED]");
-
-            // Send to Firestore
-            addDoc(collection(db, "studentCases"), {
-                studentId: studentKey,
-                notes: cleanNotes,
-                teacher: auth.currentUser.displayName,
-                school: "KIPP Navigate",
-                timestamp: serverTimestamp()
-            }).then(() => {
-                document.getElementById('privacy-preview').innerHTML = 
-                    "<p style='color: green;'>✅ Saved to Vault!</p>" +
-                    "<b>ID:</b> " + studentKey + "<br><b>Notes:</b> " + cleanNotes;
-                document.getElementById('notes').value = ""; 
-            }).catch((e) => { alert("Error: " + e.message); });
-        };
-    </script>
-</body>
-</html>
+            appId: "1:926323415415:web:f8e248e5a5e9a6035
