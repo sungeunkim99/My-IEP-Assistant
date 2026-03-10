@@ -44,7 +44,7 @@
     <div id="ai-section" style="display: none; margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 2px solid #4285F4;">
         <h3 style="margin: 0 0 10px 0; color: #4285F4;">🤖 IEP AI Assistant</h3>
         <input type="text" id="ai-prompt" placeholder="Ask e.g. 'Write a PL for SuKi12 based on quiz data'" style="width: 75%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-        <button onclick="askAI()" style="width: 20%; padding: 10px;">Ask</button>
+        <button id="ask-btn" onclick="askAI()" style="width: 20%; padding: 10px;">Ask</button>
         <div id="ai-response"></div>
     </div>
 
@@ -113,7 +113,7 @@
             });
         };
 
-        // THE AI BRAIN
+        // THE AI BRAIN (V1 STABLE)
         window.askAI = async () => {
             const prompt = document.getElementById('ai-prompt').value;
             const resBox = document.getElementById('ai-response');
@@ -124,8 +124,8 @@
 
             try {
                 const apiKey = "AIzaSyDL3b0X2ZWoolhU4g1wLNu4GcevpN2xqMg"; 
-                // Using v1 for stability with Gemini 1.5 Flash
-                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // Using the absolute most stable path possible
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
@@ -140,15 +140,15 @@
                 const data = await response.json();
                 
                 if (data.error) {
-                    resBox.innerText = "❌ Google AI Error: " + data.error.message;
+                    resBox.innerText = "❌ Error: " + data.error.message;
                 } else if (data.candidates && data.candidates[0].content.parts[0].text) {
                     resBox.innerText = data.candidates[0].content.parts[0].text;
                 } else {
-                    resBox.innerText = "❌ AI responded but the format was unexpected.";
+                    resBox.innerText = "❌ Unexpected response format.";
                 }
 
             } catch (e) { 
-                resBox.innerText = "❌ Network Error: Could not reach AI. Check your internet or API key."; 
+                resBox.innerText = "❌ Network Error: Could not reach AI."; 
             }
         };
     </script>
