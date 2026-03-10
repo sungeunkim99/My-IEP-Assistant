@@ -8,7 +8,6 @@
         button { padding: 12px 24px; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 5px; font-weight: bold; }
         .case-card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; border-left: 5px solid #28a745; text-align: left; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .shortcut-btn { padding: 8px 12px; font-size: 12px; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; margin-bottom: 5px; }
-        #ai-response { margin-top: 15px; font-size: 0.9em; background: #f0f4ff; padding: 15px; border-radius: 8px; display: none; white-space: pre-wrap; text-align: left; border: 1px solid #d0d7de; color: #333; }
     </style>
 </head>
 <body>
@@ -40,11 +39,10 @@
         <div id="privacy-preview" style="margin-top: 10px; font-size: 0.8em; color: #666;"></div>
     </div>
 
-    <div id="ai-section" style="display: none; margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 2px solid #4285F4;">
-        <h3 style="margin: 0 0 10px 0; color: #4285F4;">🤖 IEP AI Assistant</h3>
-        <input type="text" id="ai-prompt" placeholder="Ask e.g. 'Write a PL for SuKi12...'" style="width: 73%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-        <button id="ask-btn" style="width: 22%; padding: 10px;">Ask</button>
-        <div id="ai-response"></div>
+    <div id="ai-section" style="display: none; margin-top: 20px; text-align: left; background: #fff; padding: 10px; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 2px solid #4285F4; min-height: 400px;">
+        <h3 style="margin: 10px 0 10px 10px; color: #4285F4;">🤖 IEP AI Assistant</h3>
+        <script async type='module' src='https://interfaces.zapier.com/assets/web-components/zapier-interfaces/zapier-interfaces.esm.js'></script>
+        <zapier-interfaces-chatbot-embed is-popup='false' chatbot-id='cmml2th8k002vvsz4kuq0g46j' height='400px' width='100%'></zapier-interfaces-chatbot-embed>
     </div>
 
     <div id="dashboard" style="display: none; margin-top: 40px; max-width: 600px; margin-left: auto; margin-right: auto;">
@@ -58,7 +56,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Your Firebase Config
         const firebaseConfig = {
             apiKey: "AIzaSyAx0lBpJLC3xAL1FBpflewUAF1k3OieBCM",
             authDomain: "my-iep-assistant.firebaseapp.com",
@@ -74,7 +71,6 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // Handle Login
         document.getElementById('login-btn').onclick = () => { signInWithPopup(auth, provider); };
 
         onAuthStateChanged(auth, (user) => {
@@ -86,12 +82,8 @@
             }
         });
 
-        // Shortcuts
-        window.addShortcut = (type) => { 
-            document.getElementById('notes').value += ` [${type} REQUESTED] `; 
-        };
+        window.addShortcut = (type) => { document.getElementById('notes').value += ` [${type} REQUESTED] `; };
 
-        // Load Feed
         const loadDashboard = () => {
             const q = query(collection(db, "studentCases"), orderBy("timestamp", "desc"));
             onSnapshot(q, (snapshot) => {
@@ -104,54 +96,16 @@
             });
         };
 
-        // Save & Scrub
         window.saveStudent = () => {
-            let f = document.getElementById('fname').value, 
-                l = document.getElementById('lname').value, 
-                g = document.getElementById('grade').value, 
-                n = document.getElementById('notes').value;
-            
+            let f = document.getElementById('fname').value, l = document.getElementById('lname').value, g = document.getElementById('grade').value, n = document.getElementById('notes').value;
             if(!f || !l || !g) return alert("Fill student info");
-            
             let key = f.substring(0,2) + l.substring(0,2) + g;
             let clean = n.replace(/\b\d{7}\b/g, "[ID REDACTED]").replace(/(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi, "[DOB REDACTED]");
-            
-            addDoc(collection(db, "studentCases"), { 
-                studentId: key, 
-                notes: clean, 
-                teacher: auth.currentUser.displayName, 
-                school: "KIPP Navigate", 
-                timestamp: serverTimestamp() 
-            }).then(() => { 
-                document.getElementById('fname').value = ""; 
-                document.getElementById('lname').value = ""; 
-                document.getElementById('notes').value = ""; 
+            addDoc(collection(db, "studentCases"), { studentId: key, notes: clean, teacher: auth.currentUser.displayName, school: "KIPP Navigate", timestamp: serverTimestamp() })
+            .then(() => { 
+                document.getElementById('fname').value = ""; document.getElementById('lname').value = ""; document.getElementById('notes').value = ""; 
                 document.getElementById('privacy-preview').innerText = "Saved!"; 
             });
-        };
-
-        // THE AI FIX: Connects to your Vercel Proxy safely
-        document.getElementById('ask-btn').onclick = async () => {
-            const prompt = document.getElementById('ai-prompt').value;
-            const resBox = document.getElementById('ai-response');
-            if(!prompt) return;
-            
-            resBox.style.display = 'block'; 
-            resBox.innerText = "🤖 Thinking...";
-
-            try {
-                // We use your Vercel URL as the 'brain' for the AI
-                const response = await fetch('https://my-iep-assistant.vercel.app/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: `You are an IEP Assistant for KIPP Navigate. Professional tone. Request: ${prompt}` })
-                });
-                const data = await response.json();
-                resBox.innerText = data.text;
-            } catch (e) { 
-                resBox.innerText = "❌ Note: Ensure your Vercel app is live to use the AI here.";
-                console.error(e);
-            }
         };
     </script>
 </body>
