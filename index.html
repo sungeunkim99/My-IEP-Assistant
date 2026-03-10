@@ -113,7 +113,7 @@
             });
         };
 
-        // THE AI BRAIN
+        // THE AI BRAIN (V1 STABLE / GEMINI-PRO)
         window.askAI = async () => {
             const prompt = document.getElementById('ai-prompt').value;
             const resBox = document.getElementById('ai-response');
@@ -123,16 +123,16 @@
             resBox.innerText = "🤖 Thinking...";
 
             try {
-                // Using the absolute stable production key and model endpoint
                 const apiKey = "AIzaSyDL3b0X2ZWoolhU4g1wLNu4GcevpN2xqMg"; 
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                // Switched to v1 / gemini-pro for maximum compatibility
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         contents: [{ 
-                            parts: [{ text: `You are a Special Education IEP Assistant for KIPP Navigate. Use professional language. Request: ${prompt}` }] 
+                            parts: [{ text: `You are an IEP Assistant for KIPP Navigate. Use strengths-based, professional language. Request: ${prompt}` }] 
                         }] 
                     })
                 });
@@ -140,15 +140,15 @@
                 const data = await response.json();
                 
                 if (data.error) {
-                    resBox.innerText = "❌ Google AI Error: " + data.error.message;
+                    resBox.innerText = "❌ AI Error: " + data.error.message;
                 } else if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
                     resBox.innerText = data.candidates[0].content.parts[0].text;
                 } else {
-                    resBox.innerText = "❌ AI response received but could not be read.";
+                    resBox.innerText = "❌ Unexpected response format.";
                 }
 
             } catch (e) { 
-                resBox.innerText = "❌ Connection failed. Check your internet."; 
+                resBox.innerText = "❌ Network Error: Could not reach AI."; 
             }
         };
     </script>
