@@ -79,8 +79,11 @@
             let idPattern = /\b\d{7}\b/g; 
             let datePattern = /\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/g; 
 
-            let cleanNotes = notes.replace(idPattern, "[ID REDACTED]");
-            cleanNotes = cleanNotes.replace(datePattern, "[DATE REDACTED]");
+            // This only redacts if the date is preceded by "DOB" or "born"
+    let dobPattern = /(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi;
+
+    let cleanNotes = notes.replace(idPattern, "[ID REDACTED]");
+    cleanNotes = cleanNotes.replace(dobPattern, "[DOB REDACTED]");
 
             // 3. Show the teacher the result
             document.getElementById('privacy-preview').innerHTML = 
