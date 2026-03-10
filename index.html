@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My IEP Assistant</title>
+    <style>
+        body { font-family: sans-serif; padding: 40px; text-align: center; background-color: #f4f7f6; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: inline-block; }
+        button { padding: 12px 24px; cursor: pointer; background-color: #4285F4; color: white; border: none; border-radius: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>My IEP Assistant</h1>
+        <div id="login-section">
+            <button id="login-btn">Log in with Google</button>
+        </div>
+        <div id="user-info" style="display: none;">
+            <p>Welcome, <span id="user-name"></span>!</p>
+            <p>School: <b>KIPP Navigate</b></p>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+        const firebaseConfig = {
+    apiKey: "AIzaSyAx0lBpJLC3xAL1FBpflewUAF1k3OieBCM",
+    authDomain: "my-iep-assistant.firebaseapp.com",
+    projectId: "my-iep-assistant",
+    storageBucket: "my-iep-assistant.firebasestorage.app",
+    messagingSenderId: "926323415415",
+    appId: "1:926323415415:web:f8e248e5a5e9a603532972",
+    measurementId: "G-XTT3GG60CZ"
+  };
+      
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const provider = new GoogleAuthProvider();
+
+        document.getElementById('login-btn').onclick = () => {
+            signInWithPopup(auth, provider).catch((error) => { alert(error.message); });
+        };
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                document.getElementById('login-section').style.display = 'none';
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('user-name').innerText = user.displayName;
+            }
+        });
+    </script>
+</body>
+</html>
