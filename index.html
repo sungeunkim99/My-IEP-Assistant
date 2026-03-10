@@ -28,7 +28,6 @@
         <input type="text" id="fname" placeholder="First Name" style="width: 45%; padding: 8px;">
         <input type="text" id="lname" placeholder="Last Name" style="width: 45%; padding: 8px;"><br><br>
         <input type="number" id="grade" placeholder="Grade" style="width: 95%; padding: 8px;"><br><br>
-        
         <textarea id="notes" placeholder="Type observation..." style="width: 95%; height: 80px; padding: 8px;"></textarea>
         
         <div id="shortcuts" style="margin-top: 10px; display: flex; flex-wrap: wrap;">
@@ -43,7 +42,7 @@
 
     <div id="ai-section" style="display: none; margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 2px solid #4285F4;">
         <h3 style="margin: 0 0 10px 0; color: #4285F4;">🤖 IEP AI Assistant</h3>
-        <input type="text" id="ai-prompt" placeholder="Ask e.g. 'Write a PL for SuKi12 based on quiz data'" style="width: 75%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
+        <input type="text" id="ai-prompt" placeholder="Ask e.g. 'Write a PL for SuKi12...'" style="width: 75%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
         <button onclick="askAI()" style="width: 20%; padding: 10px;">Ask</button>
         <div id="ai-response"></div>
     </div>
@@ -54,10 +53,19 @@
         <div id="cases-list"></div>
     </div>
 
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/generative-ai": "https://esm.run/@google/generative-ai"
+        }
+      }
+    </script>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { GoogleGenerativeAI } from "@google/generative-ai";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAx0lBpJLC3xAL1FBpflewUAF1k3OieBCM",
@@ -73,6 +81,10 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
+
+        // INITIALIZE AI WITH YOUR KEY
+        const genAI = new GoogleGenerativeAI("AIzaSyDL3b0X2ZWoolhU4g1wLNu4GcevpN2xqMg");
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         document.getElementById('login-btn').onclick = () => { signInWithPopup(auth, provider); };
 
@@ -106,14 +118,12 @@
             let clean = n.replace(/\b\d{7}\b/g, "[ID REDACTED]").replace(/(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi, "[DOB REDACTED]");
             addDoc(collection(db, "studentCases"), { studentId: key, notes: clean, teacher: auth.currentUser.displayName, school: "KIPP Navigate", timestamp: serverTimestamp() })
             .then(() => { 
-                document.getElementById('fname').value = "";
-                document.getElementById('lname').value = "";
-                document.getElementById('notes').value = ""; 
+                document.getElementById('fname').value = ""; document.getElementById('lname').value = ""; document.getElementById('notes').value = ""; 
                 document.getElementById('privacy-preview').innerText = "Saved!"; 
             });
         };
 
-        // THE AI BRAIN (V1 STABLE / GEMINI-PRO)
+        // THE AI BRAIN (USING SDK)
         window.askAI = async () => {
             const prompt = document.getElementById('ai-prompt').value;
             const resBox = document.getElementById('ai-response');
@@ -123,32 +133,12 @@
             resBox.innerText = "🤖 Thinking...";
 
             try {
-                const apiKey = "AIzaSyDL3b0X2ZWoolhU4g1wLNu4GcevpN2xqMg"; 
-                // Switched to v1 / gemini-pro for maximum compatibility
-                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`;
-                
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        contents: [{ 
-                            parts: [{ text: `You are an IEP Assistant for KIPP Navigate. Use strengths-based, professional language. Request: ${prompt}` }] 
-                        }] 
-                    })
-                });
-
-                const data = await response.json();
-                
-                if (data.error) {
-                    resBox.innerText = "❌ AI Error: " + data.error.message;
-                } else if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                    resBox.innerText = data.candidates[0].content.parts[0].text;
-                } else {
-                    resBox.innerText = "❌ Unexpected response format.";
-                }
-
+                const result = await model.generateContent(`You are an IEP Assistant for KIPP Navigate. Use professional language. Request: ${prompt}`);
+                const response = await result.response;
+                resBox.innerText = response.text();
             } catch (e) { 
-                resBox.innerText = "❌ Network Error: Could not reach AI."; 
+                resBox.innerText = "❌ Error: " + e.message;
+                console.error(e);
             }
         };
     </script>
