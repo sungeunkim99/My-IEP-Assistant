@@ -18,7 +18,24 @@
             <p>Welcome, <span id="user-name"></span>!</p>
             <p>School: <b>KIPP Navigate</b></p>
         </div>
-    </div>
+    </div> <div id="student-entry" style="display: none; margin-top: 30px; text-align: left; background: #eee; padding: 20px; border-radius: 8px;">
+    <h3>Add Student Case</h3>
+    <label>First Name:</label><br>
+    <input type="text" id="fname" placeholder="e.g. Liam"><br><br>
+    
+    <label>Last Name:</label><br>
+    <input type="text" id="lname" placeholder="e.g. Green"><br><br>
+    
+    <label>Grade Level:</label><br>
+    <input type="number" id="grade" placeholder="10"><br><br>
+
+    <label>Observation Notes (No DOB or ID!):</label><br>
+    <textarea id="notes" style="width: 100%; height: 80px;"></textarea><br><br>
+
+    <button onclick="saveStudent()" style="background-color: #28a745;">Generate Private Case</button>
+    
+    <div id="privacy-preview" style="margin-top: 20px; color: #d9534f; font-weight: bold;"></div>
+</div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -46,7 +63,33 @@
             if (user) {
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('user-info').style.display = 'block';
+                document.getElementById('student-entry').style.display = 'block';
                 document.getElementById('user-name').innerText = user.displayName;
+                // THE PRIVACY SCRUBBER LOGIC
+        window.saveStudent = () => {
+            let f = document.getElementById('fname').value;
+            let l = document.getElementById('lname').value;
+            let g = document.getElementById('grade').value;
+            let notes = document.getElementById('notes').value;
+
+            // 1. Create the Private Key (e.g. SuKi10)
+            let studentKey = f.substring(0,2) + l.substring(0,2) + g;
+
+            // 2. The FERPA Scrubber (Redacting 7-digit IDs and Dates)
+            let idPattern = /\b\d{7}\b/g; 
+            let datePattern = /\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/g; 
+
+            let cleanNotes = notes.replace(idPattern, "[ID REDACTED]");
+            cleanNotes = cleanNotes.replace(datePattern, "[DATE REDACTED]");
+
+            // 3. Show the teacher the result
+            document.getElementById('privacy-preview').innerHTML = 
+                "SUCCESS! Data scrubbed.<br>" +
+                "ID saved as: <b>" + studentKey + "</b><br>" +
+                "Notes saved: <i>" + cleanNotes + "</i>";
+
+            console.log("Privacy check complete for " + studentKey);
+        };
             }
         });
     </script>
