@@ -44,7 +44,7 @@
     <div id="ai-section" style="display: none; margin-top: 20px; text-align: left; background: #fff; padding: 20px; border-radius: 12px; max-width: 500px; margin-left: auto; margin-right: auto; border: 2px solid #4285F4;">
         <h3 style="margin: 0 0 10px 0; color: #4285F4;">🤖 IEP AI Assistant</h3>
         <input type="text" id="ai-prompt" placeholder="Ask e.g. 'Write a PL for SuKi12 based on quiz data'" style="width: 75%; padding: 10px; border-radius: 5px; border: 1px solid #ccc;">
-        <button id="ask-btn" onclick="askAI()" style="width: 20%; padding: 10px;">Ask</button>
+        <button onclick="askAI()" style="width: 20%; padding: 10px;">Ask</button>
         <div id="ai-response"></div>
     </div>
 
@@ -113,7 +113,7 @@
             });
         };
 
-        // THE AI BRAIN (V1 STABLE)
+        // THE AI BRAIN
         window.askAI = async () => {
             const prompt = document.getElementById('ai-prompt').value;
             const resBox = document.getElementById('ai-response');
@@ -123,16 +123,16 @@
             resBox.innerText = "🤖 Thinking...";
 
             try {
+                // Using the absolute stable production key and model endpoint
                 const apiKey = "AIzaSyDL3b0X2ZWoolhU4g1wLNu4GcevpN2xqMg"; 
-                // Using the absolute most stable path possible
-                const url = `https://www.google.com/search?q=https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                 
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         contents: [{ 
-                            parts: [{ text: `You are an IEP Assistant for KIPP Navigate. Use strengths-based, professional language. Request: ${prompt}` }] 
+                            parts: [{ text: `You are a Special Education IEP Assistant for KIPP Navigate. Use professional language. Request: ${prompt}` }] 
                         }] 
                     })
                 });
@@ -140,15 +140,15 @@
                 const data = await response.json();
                 
                 if (data.error) {
-                    resBox.innerText = "❌ Error: " + data.error.message;
-                } else if (data.candidates && data.candidates[0].content.parts[0].text) {
+                    resBox.innerText = "❌ Google AI Error: " + data.error.message;
+                } else if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
                     resBox.innerText = data.candidates[0].content.parts[0].text;
                 } else {
-                    resBox.innerText = "❌ Unexpected response format.";
+                    resBox.innerText = "❌ AI response received but could not be read.";
                 }
 
             } catch (e) { 
-                resBox.innerText = "❌ Network Error: Could not reach AI."; 
+                resBox.innerText = "❌ Connection failed. Check your internet."; 
             }
         };
     </script>
