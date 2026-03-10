@@ -18,83 +18,86 @@
             <p>Welcome, <span id="user-name"></span>!</p>
             <p>School: <b>KIPP Navigate</b></p>
         </div>
-    </div> <div id="student-entry" style="display: none; margin-top: 30px; text-align: left; background: #eee; padding: 20px; border-radius: 8px;">
-    <h3>Add Student Case</h3>
-    <label>First Name:</label><br>
-    <input type="text" id="fname" placeholder="e.g. Liam"><br><br>
-    
-    <label>Last Name:</label><br>
-    <input type="text" id="lname" placeholder="e.g. Green"><br><br>
-    
-    <label>Grade Level:</label><br>
-    <input type="number" id="grade" placeholder="10"><br><br>
+    </div> 
 
-    <label>Observation Notes (No DOB or ID!):</label><br>
-    <textarea id="notes" style="width: 100%; height: 80px;"></textarea><br><br>
-
-    <button onclick="saveStudent()" style="background-color: #28a745;">Generate Private Case</button>
-    
-    <div id="privacy-preview" style="margin-top: 20px; color: #d9534f; font-weight: bold;"></div>
-</div>
+    <div id="student-entry" style="display: none; margin-top: 30px; text-align: left; background: #eee; padding: 20px; border-radius: 8px; max-width: 400px; margin-left: auto; margin-right: auto;">
+        <h3>Add Student Case</h3>
+        <label>First Name:</label><br>
+        <input type="text" id="fname" placeholder="e.g. Liam" style="width: 95%;"><br><br>
+        <label>Last Name:</label><br>
+        <input type="text" id="lname" placeholder="e.g. Green" style="width: 95%;"><br><br>
+        <label>Grade Level:</label><br>
+        <input type="number" id="grade" placeholder="10" style="width: 95%;"><br><br>
+        <label>Observation Notes (No DOB or ID!):</label><br>
+        <textarea id="notes" style="width: 95%; height: 80px;"></textarea><br><br>
+        <button onclick="saveStudent()" style="background-color: #28a745; width: 100%;">Generate & Save Private Case</button>
+        <div id="privacy-preview" style="margin-top: 20px; color: #2c3e50; font-size: 0.9em;"></div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
-    apiKey: "AIzaSyAx0lBpJLC3xAL1FBpflewUAF1k3OieBCM",
-    authDomain: "my-iep-assistant.firebaseapp.com",
-    projectId: "my-iep-assistant",
-    storageBucket: "my-iep-assistant.firebasestorage.app",
-    messagingSenderId: "926323415415",
-    appId: "1:926323415415:web:f8e248e5a5e9a603532972",
-    measurementId: "G-XTT3GG60CZ"
-  };
-      
+            apiKey: "AIzaSyAx0lBpJLC3xAL1FBpflewUAF1k3OieBCM",
+            authDomain: "my-iep-assistant.firebaseapp.com",
+            projectId: "my-iep-assistant",
+            storageBucket: "my-iep-assistant.firebasestorage.app",
+            messagingSenderId: "926323415415",
+            appId: "1:926323415415:web:f8e248e5a5e9a603532972",
+            measurementId: "G-XTT3GG60CZ"
+        };
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
+        const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
+        // 1. Handle Login Button
         document.getElementById('login-btn').onclick = () => {
             signInWithPopup(auth, provider).catch((error) => { alert(error.message); });
         };
 
+        // 2. Monitor Login State
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('user-info').style.display = 'block';
                 document.getElementById('student-entry').style.display = 'block';
                 document.getElementById('user-name').innerText = user.displayName;
-                // THE PRIVACY SCRUBBER LOGIC
+            }
+        });
+
+        // 3. The Privacy Scrubber & Database Save
         window.saveStudent = () => {
             let f = document.getElementById('fname').value;
             let l = document.getElementById('lname').value;
             let g = document.getElementById('grade').value;
             let notes = document.getElementById('notes').value;
 
-            // 1. Create the Private Key (e.g. SuKi10)
+            if(!f || !l || !g) { alert("Please fill out Name and Grade"); return; }
+
             let studentKey = f.substring(0,2) + l.substring(0,2) + g;
-
-            // 2. The FERPA Scrubber (Redacting 7-digit IDs and Dates)
             let idPattern = /\b\d{7}\b/g; 
-            let datePattern = /\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/g; 
+            let dobPattern = /(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi;
 
-            // This only redacts if the date is preceded by "DOB" or "born"
-    let dobPattern = /(dob|born|birth|birthday)\s*:?\s*\d{1,2}[\/-]\d{1,2}[\/-]\d{2,4}/gi;
+            let cleanNotes = notes.replace(idPattern, "[ID REDACTED]").replace(dobPattern, "[DOB REDACTED]");
 
-    let cleanNotes = notes.replace(idPattern, "[ID REDACTED]");
-    cleanNotes = cleanNotes.replace(dobPattern, "[DOB REDACTED]");
-
-            // 3. Show the teacher the result
-            document.getElementById('privacy-preview').innerHTML = 
-                "SUCCESS! Data scrubbed.<br>" +
-                "ID saved as: <b>" + studentKey + "</b><br>" +
-                "Notes saved: <i>" + cleanNotes + "</i>";
-
-            console.log("Privacy check complete for " + studentKey);
+            // Send to Firestore
+            addDoc(collection(db, "studentCases"), {
+                studentId: studentKey,
+                notes: cleanNotes,
+                teacher: auth.currentUser.displayName,
+                school: "KIPP Navigate",
+                timestamp: serverTimestamp()
+            }).then(() => {
+                document.getElementById('privacy-preview').innerHTML = 
+                    "<p style='color: green;'>✅ Saved to Vault!</p>" +
+                    "<b>ID:</b> " + studentKey + "<br><b>Notes:</b> " + cleanNotes;
+                document.getElementById('notes').value = ""; 
+            }).catch((e) => { alert("Error: " + e.message); });
         };
-            }
-        });
     </script>
 </body>
 </html>
